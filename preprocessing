@@ -1,0 +1,43 @@
+import os
+from PIL import Image, ImageEnhance, ImageFilter
+from tqdm import tqdm
+
+def preprocess_images(folder_path, target_size=(650, 650), contrast_factor=1.5):
+    output_folder = os.path.join(folder_path, "processed")
+    os.makedirs(output_folder, exist_ok=True)
+
+    image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('png', 'jpg', 'jpeg'))]
+
+    for filename in tqdm(image_files, desc="Processing Images"):
+        image_path = os.path.join(folder_path, filename)
+
+        try:
+            image = Image.open(image_path)
+            bw_image = image.convert("L")  # Convert to grayscale
+
+            img_width, img_height = bw_image.size
+            ratio = min(target_size[0] / img_width, target_size[1] / img_height)
+
+            new_width = int(img_width * ratio)
+            new_height = int(img_height * ratio)
+
+            resized_image = bw_image.resize((new_width, new_height), Image.LANCZOS)
+
+            enhancer = ImageEnhance.Contrast(resized_image)
+            enhanced = enhancer.enhance(contrast_factor)
+
+            final_image = enhanced.filter(ImageFilter.EDGE_ENHANCE)
+
+            new_image = Image.new("L", target_size, (128))  # Gray background (128)
+            paste_x = (target_size[0] - new_width) // 2
+            paste_y = (target_size[1] - new_height) // 2
+            new_image.paste(final_image, (paste_x, paste_y))
+
+            processed_image_path = os.path.join(output_folder, filename)
+            new_image.save(processed_image_path)
+
+        except Exception as e:
+            print(f"Error processing {filename}: {e}")
+
+if __name__ == "__main__":
+    preprocess_images("ISL ML")  # Replace "ISL ML" with your folder path
